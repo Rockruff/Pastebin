@@ -1,0 +1,34 @@
+on init
+	declare %cloud_key_ID[127]
+	declare $cloud_note
+	declare const $cloud_minOct := -1
+	declare const $cloud_maxOct := 2
+	declare const $cloud_amountPan := 1000
+	declare const $cloud_minTime := 2
+	declare const $cloud_maxTime := 3
+	declare const $cloud_minVel := 30
+	declare const $cloud_maxVel := 90
+	declare const $cloud_length := 2 * 1000000
+end on
+
+on note
+	%cloud_key_ID[$EVENT_NOTE] := $EVENT_ID
+	while(%cloud_key_ID[$EVENT_NOTE] # 0)
+		wait_ticks(sh_left(120, random($cloud_minTime, $cloud_maxTime)))
+		$cloud_note := $EVENT_NOTE + (12 * random($cloud_minOct, $cloud_maxOct))
+		while ($cloud_note < 21)
+			$cloud_note := $cloud_note + 12
+		end while
+		while ($cloud_note > 108)
+			$cloud_note := $cloud_note - 12
+		end while
+		$cloud_note := play_note($cloud_note, random($cloud_minVel, $cloud_maxVel), 0, $cloud_length)
+		change_pan($cloud_note, random(-$cloud_amountPan, $cloud_amountPan), 0)
+	end while
+end on
+
+on release
+	if (%cloud_key_ID[$EVENT_NOTE] = $EVENT_ID)
+		%cloud_key_ID[$EVENT_NOTE] := 0
+	end if
+end on
