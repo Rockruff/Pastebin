@@ -13,7 +13,7 @@ end on
 
 on note
 	%cloud_key_ID[$EVENT_NOTE] := $EVENT_ID
-	while(%cloud_key_ID[$EVENT_NOTE] # 0)
+	while (%cloud_key_ID[$EVENT_NOTE] # 0)
 		wait_ticks(sh_left(120, random($cloud_minTime, $cloud_maxTime)))
 		$cloud_note := $EVENT_NOTE + (12 * random($cloud_minOct, $cloud_maxOct))
 		while ($cloud_note < 21)
