@@ -1,36 +1,31 @@
-async function deleteDocument(docid)
-{
-	const postForm = (url, form) =>
+async function deleteDocument(doc_id_str) {
+	const post = (url, form) =>
 		fetch(url, {
 			method: "POST",
 			headers: { "Content-Type": "application/x-www-form-urlencoded" },
 			body: new URLSearchParams(form).toString()
-		});
+		}).then(r => r.json());
 
-	let data = await postForm(
+	let fold_id_str = await post(
 		"https://wenku.baidu.com/user/interface/getfoldid",
-		{ docid }
-	)
-		.then(r => r.json())
-		.then(({ data }) => data);
+		{ docid: doc_id_str }
+	).then(({ data }) => data);
 
-	if (data.errmsg) {
-		console.error(data.errmsg);
+	if (fold_id_str.errmsg) {
+		console.error(fold_id_str.errmsg);
 		return;
 	}
 
-	let foldid = data.data[docid];
+	fold_id_str = fold_id_str.data[doc_id_str];
 
-	data = await fetch("https://wenku.baidu.com/user/interface/getcontribution")
-		.then(r => r.json())
-		.then(({ data }) => data);
+	let { new_token, token } = await post(
+		"https://wenku.baidu.com/user/interface/getcontribution"
+	).then(({ data }) => data);
 
-	let { new_token, token } = data;
-
-	let { error_no } = await postForm(
+	let { error_no } = await post(
 		"https://wenku.baidu.com/user/submit/newdocDelete",
-		{ doc_id_str: docid, new_token, token, fold_id_str: foldid }
-	).then(r => r.json());
+		{ doc_id_str, new_token, token, fold_id_str }
+	);
 
 	console.log(error_no); //0 == success
 }
