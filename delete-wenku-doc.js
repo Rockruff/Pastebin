@@ -1,10 +1,10 @@
-async function deleteDocument(doc_id_str) {
-	const post = (url, form) =>
-		fetch(url, {
-			method: "POST",
-			headers: { "Content-Type": "application/x-www-form-urlencoded" },
-			body: new URLSearchParams(form).toString()
-		}).then(r => r.json());
+async function deleteDocument(doc_id_str)
+{
+	const post = (url, form) => fetch(url, {
+		method: "POST",
+		headers: { "Content-Type": "application/x-www-form-urlencoded" },
+		body: new URLSearchParams(form).toString()
+	}).then(r => r.json());
 
 	let fold_id_str = await post(
 		"https://wenku.baidu.com/user/interface/getfoldid",
