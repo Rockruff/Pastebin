@@ -185,7 +185,7 @@ GOTO:EOF
 
 REM ========================================================================
 
-REM Unused. How to keep %MklinkCalled% without passing %X% outsize?
+REM Unused. How to keep %MklinkCalled% without passing %X% outside?
 
 :RedirectDirToRamDisk
 SETLOCAL
