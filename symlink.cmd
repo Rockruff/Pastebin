@@ -77,7 +77,7 @@ GOTO:EOF
 :VerifyLink
 SETLOCAL ENABLEDELAYEDEXPANSION
 SET V=0
-FOR /F "DELIMS=" %%I IN ('DIR /O:N /A:L /B "%~dp1"') DO (
+FOR /F "DELIMS=" %%I IN ('DIR /O:N /A:L /B "%~dp1" 2^>nul') DO (
 	IF /I "%%I" == "%~nx1" ( GOTO:VerifyLink_LocalLabel )
 	SET /A V=!V!+1
 )
