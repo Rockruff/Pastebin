@@ -452,7 +452,11 @@ async function Main() {
 						isCalculateclassHourFlag: true,
 					});
 					console.log(respDesc, videoLearnRate);
-					if (!(videoLearnRate < 100) || respCode === "INVALID_RESTART") break;
+					if (!(videoLearnRate < 100)) break;
+					if (respCode === "INVALID_RESTART") {
+						console.log("Aborted", new Date());
+						return;
+					}
 				}
 			} catch (e) {
 				console.error(e);
@@ -462,4 +466,4 @@ async function Main() {
 	}
 }
 
-Main("fca2e32f-4c4f-4ffe-84f2-6e00c9252f14");
+Main();
