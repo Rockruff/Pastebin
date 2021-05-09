@@ -357,9 +357,6 @@ const MD5 = (function () {
 /********** Network **********/
 
 function TransformResponse(resp) {
-	if (resp.respCode !== 200) {
-		throw resp;
-	}
 	try {
 		return resp.attribute.data;
 	} catch {
@@ -399,71 +396,99 @@ function Random(low, high) {
 	return Math.floor(Math.random() * (high - low) + low);
 }
 
+/********** Logger **********/
+
+document.body.innerHTML = "";
+
+function Log() {
+	const parent = document.body;
+	let element = document.createElement("div");
+	element.innerText = new Date().toLocaleString() + " |";
+	for (let argument of arguments) {
+		element.innerText += " ";
+		element.innerText += argument;
+	}
+	parent.appendChild(element);
+	if (parent.childElementCount > 25) {
+		parent.removeChild(parent.firstElementChild);
+	}
+}
+
 /********** Main **********/
+
+function IsCompleted(progress) {
+	return !(progress < 100);
+}
 
 function CalcWatchInfo(watchInfo) {
 	watchInfo.timestamp = Time();
 	watchInfo.sign = SHA1(watchInfo.pid + watchInfo.vid + watchInfo.playduration + watchInfo.timestamp + MD5(watchInfo.vid).substr(0, 8));
-	const result = JSON.stringify(watchInfo);
+	let result = JSON.stringify(watchInfo);
 	watchInfo.playduration += 10;
 	return result;
 }
 
-async function Main() {
+async function GetVideos(myClassId) {
+	let videos = [];
+	let { myClassCourseRPList } = await HttpGet("http://zzszyk.user.ghlearning.com/train/class/my-class.gson?myClassId=" + myClassId);
+	for (let { videoRPs } of myClassCourseRPList)
+		for (let video of videoRPs)
+			videos.push(video);
+	return videos;
+}
+
+async function LearnClass(myClassId)
+{
 	const playerId = Time() + "X" + Random(1000000, 2000000);
+	const videoRPs = await GetVideos(myClassId);
 
-	const myClassId = "fca2e32f-4c4f-4ffe-84f2-6e00c9252f14";
-	const { myClassCourseRPList } = await HttpGet("http://zzszyk.user.ghlearning.com/train/class/my-class.gson?myClassId=" + myClassId);
+	for (const { videoName, videoSource, learnSpeed, myClassCourseId, myClassCourseVideoId } of videoRPs)
+	{
+		if (IsCompleted(learnSpeed)) {
+			Log("Skip Completed Video:", videoName);
+			continue;
+		}
 
-	for (const { videoRPs } of myClassCourseRPList) {
-		for (const video of videoRPs) {
-			try {
-				console.log(video.videoName, video.learnSpeed);
-				if (!(video.learnSpeed < 100)) continue;
+		Log("Video Started:", videoName, "Progress:", learnSpeed);
+		const formData = { myClassId, myClassCourseId, myClassCourseVideoId };
+		const watchInfo = { vid: videoSource, pid: playerId, playduration: 0 };
 
-				// set last video
-				await HttpPost("http://zzszyk.user.ghlearning.com/train/cms/my-video/update-last-video.gson", {
-					myClassId: myClassId,
-					myClassCourseId: video.myClassCourseId,
-					myClassCourseVideoId: video.myClassCourseVideoId,
-				});
+		try
+		{
+			// set last video
+			await HttpPost("http://zzszyk.user.ghlearning.com/train/cms/my-video/update-last-video.gson", formData);
 
-				const watchInfo = {
-					vid: video.videoSource,
-					pid: playerId,
-					playduration: 0,
-				};
+			// start video
+			formData.watchInfo = CalcWatchInfo(watchInfo);
+			await HttpPost("http://zzszyk.user.ghlearning.com/train/cms/my-video/sv.gson", formData);
 
-				// start video
-				await HttpPost("http://zzszyk.user.ghlearning.com/train/cms/my-video/sv.gson", {
-					myClassId: myClassId,
-					myClassCourseId: video.myClassCourseId,
-					myClassCourseVideoId: video.myClassCourseVideoId,
-					watchInfo: CalcWatchInfo(watchInfo),
-				});
+			// learn until complete
+			for (formData.isCalculateclassHourFlag = true; ; await Sleep(10))
+			{
+				formData.watchInfo = CalcWatchInfo(watchInfo);
+				const { respCode, respDesc, classLearnRate, videoLearnRate } = await HttpPost("http://zzszyk.user.ghlearning.com/train/cms/my-video/cv.gson", formData);
+				Log(respDesc, videoLearnRate);
 
-				// learn until complete
-				for (await Sleep(5); ; await Sleep(10)) {
-					const { respCode, respDesc, videoLearnRate } = await HttpPost("http://zzszyk.user.ghlearning.com/train/cms/my-video/cv.gson", {
-						myClassId: myClassId,
-						myClassCourseId: video.myClassCourseId,
-						myClassCourseVideoId: video.myClassCourseVideoId,
-						watchInfo: CalcWatchInfo(watchInfo),
-						isCalculateclassHourFlag: true,
-					});
-					console.log(respDesc, videoLearnRate);
-					if (!(videoLearnRate < 100)) break;
-					if (respCode === "INVALID_RESTART") {
-						console.log("Aborted", new Date());
-						return;
-					}
+				if (IsCompleted(classLearnRate)) {
+					Log("Class Completed");
+					return;
 				}
-			} catch (e) {
-				console.error(e);
-				await Sleep(60);
+				if (IsCompleted(videoLearnRate)) {
+					Log("Video Completed:", videoName);
+					break;
+				}
+				if (respCode === "INVALID_RESTART") {
+					Log("Learn Aborted");
+					return;
+				}
 			}
+		}
+		catch (error)
+		{
+			Log(error);
+			await Sleep(60);
 		}
 	}
 }
 
-Main();
+LearnClass("058da0ef-f3ef-47f2-9de6-68c8b2068506");
